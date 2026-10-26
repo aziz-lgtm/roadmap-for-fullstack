@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fullstack Practice Tracker</title>
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--text:#1c1c1a;--muted:#6b6b66;--line:#e3e1d9;--acc:#2f6fed;--ok:#1f9d55;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141413;--card:#1e1e1c;--text:#ecebe6;--muted:#9a9990;--line:#33332f;--acc:#6b9bff;--ok:#4cc380}}
+:root[data-theme="dark"]{--bg:#141413;--card:#1e1e1c;--text:#ecebe6;--muted:#9a9990;--line:#33332f;--acc:#6b9bff;--ok:#4cc380}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45}
+main{max-width:640px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 16px;font-size:.95rem}
+.bar{height:10px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;width:0;background:var(--acc);transition:width .3s}
+.bar.ok>i{background:var(--ok)}
+.top{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+.top b{font-size:2rem}
+.top .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.next{margin-top:12px;font-size:.92rem;color:var(--muted)}
+.next strong{color:var(--text)}
+.stage{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.stage.cur{border-color:var(--acc)}
+.sh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.sh h2{font-size:1.02rem;margin:0}
+.tag{font-size:.75rem;color:var(--muted);white-space:nowrap}
+.stage.cur .tag{color:var(--acc);font-weight:600}
+label{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line);cursor:pointer}
+label:first-of-type{margin-top:10px}
+input{width:20px;height:20px;margin:1px 0 0;accent-color:var(--ok);flex:none}
+label span{flex:1}
+input:checked+span{color:var(--muted);text-decoration:line-through}
+button{margin-top:8px;background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:8px 12px;font:inherit;font-size:.85rem;cursor:pointer}
+.note{color:var(--muted);font-size:.8rem;margin-top:12px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Fullstack Practice Tracker</h1>
+  <p class="sub">Build it. Tick it. Next.</p>
+  <div class="top">
+    <div class="row"><b id="pct">0%</b><span id="cnt" class="tag"></span></div>
+    <div class="bar" id="mainbar"><i id="fill"></i></div>
+    <div class="next" id="next"></div>
+  </div>
+  <div id="stages"></div>
+  <button id="reset">Reset all progress</button>
+  <p class="note">Progress saves in this browser only.</p>
+</main>
+<script>
+var STAGES=[
+{t:"1. Backend basics",i:["Notes API with GET, POST, PUT, DELETE","Notes API saving to a JSON file"]},
+{t:"2. Database",i:["Notes API on a real database","Blog API: users, posts, comments"]},
+{t:"3. Frontend + backend",i:["Todo app fetching from your own API","CRUD app: form + list"]},
+{t:"4. Authentication",i:["Register + login (hashed passwords, JWT)","Protected pages for logged-in users only"]},
+{t:"5. Full projects",i:["Blog platform: login, posts, comments","Expense tracker: charts + user accounts","E-commerce: cart + orders","Chat app with WebSockets"]},
+{t:"6. Ship it",i:["Deploy one project (Vercel + Render/Railway + Neon/Supabase)","Every project pushed to GitHub"]},
+{t:"7. Level up",i:["Rebuild one project with Next.js","Add TypeScript to one project","Add file upload + email sending"]}
+];
+var KEY="fs-tracker-v1",state={};
+try{state=JSON.parse(localStorage.getItem(KEY))||{}}catch(e){state={}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+function render(){
+  var total=0,done=0,cur=-1,nextTask="",html="";
+  STAGES.forEach(function(s,si){
+    var d=0;
+    s.i.forEach(function(x,ii){if(state[si+"-"+ii])d++;else if(!nextTask)nextTask=x});
+    total+=s.i.length;done+=d;
+    if(cur<0&&d<s.i.length)cur=si;
+  });
+  STAGES.forEach(function(s,si){
+    var d=0;s.i.forEach(function(x,ii){if(state[si+"-"+ii])d++});
+    var full=d===s.i.length;
+    html+='<section class="stage'+(si===cur?' cur':'')+'"><div class="sh"><h2>'+s.t+'</h2><span class="tag">'+(full?'Done ✓':si===cur?'Current · ':'')+(full?'':d+'/'+s.i.length)+'</span></div><div class="bar'+(full?' ok':'')+'"><i style="width:'+(d/s.i.length*100)+'%"></i></div>';
+    s.i.forEach(function(x,ii){
+      html+='<label><input type="checkbox" data-k="'+si+'-'+ii+'"'+(state[si+"-"+ii]?' checked':'')+'><span>'+x+'</span></label>';
+    });
+    html+='</section>';
+  });
+  document.getElementById("stages").innerHTML=html;
+  var p=Math.round(done/total*100);
+  document.getElementById("pct").textContent=p+"%";
+  document.getElementById("cnt").textContent=done+" / "+total+" builds";
+  document.getElementById("fill").style.width=p+"%";
+  document.getElementById("mainbar").className="bar"+(p===100?" ok":"");
+  document.getElementById("next").innerHTML=nextTask?'Build next: <strong>'+nextTask+'</strong>':'<strong>Everything built. You’re fullstack.</strong>';
+}
+document.getElementById("stages").addEventListener("change",function(e){
+  var k=e.target.getAttribute("data-k");
+  if(!k)return;
+  if(e.target.checked)state[k]=1;else delete state[k];
+  save();render();
+});
+document.getElementById("reset").addEventListener("click",function(){
+  if(confirm("Reset all progress?")){state={};save();render()}
+});
+render();
+</script>
+</body>
+</html>
